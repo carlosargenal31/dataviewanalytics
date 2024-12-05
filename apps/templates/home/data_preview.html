@@ -1,0 +1,320 @@
+{% extends "layouts/base.html" %}
+{% load custom_filters %}
+
+{% block title %} Vista Previa {% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-sm-6 text-left">
+                            <h5 class="card-category">Vista Previa</h5>
+                            <h2 class="card-title">{{ file.name }}</h2>
+                        </div>
+                        <div class="col-sm-6">
+                            <button type="button" class="btn btn-primary float-right" data-toggle="modal" data-target="#columnSelector">
+                                <i class="tim-icons icon-settings"></i> Configurar Columnas
+                            </button>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <a href="{% url 'data-management' %}" class="btn btn-primary btn-sm">Volver</a>
+                    </div>
+                    
+                    <div class="top-scroll-wrapper">
+                        <div class="top-scroll-content"></div>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-wrapper">
+                            <table class="table tablesorter" id="previewTable">
+                                <thead class="text-primary">
+                                    <tr>
+                                        {% for column in visible_columns %}
+                                        <th class="sortable" data-column="{{ column }}">
+                                            {{ column }}
+                                            <i class="tim-icons icon-minimal-down"></i>
+                                        </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in records %}
+                                    <tr>
+                                        {% for column in visible_columns %}
+                                        <td>{{ record.data|get_item:column }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para selección de columnas -->
+<div class="modal fade" id="columnSelector" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Configurar Columnas Visibles</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="columnSelectorForm" method="post">
+                    {% csrf_token %}
+                    <div class="columns-grid">
+                        {% for column in all_columns %}
+                        <div class="form-check">
+                            <label class="form-check-label">
+                                <input class="form-check-input" type="checkbox" name="columns" value="{{ column }}"
+                                       {% if column in visible_columns %}checked{% endif %}>
+                                {{ column }}
+                                <span class="form-check-sign">
+                                    <span class="check"></span>
+                                </span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="updateColumns()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sincronización de scrolls
+    const tableWrapper = document.querySelector('.table-wrapper');
+    const topScroll = document.querySelector('.top-scroll-wrapper');
+    const topScrollContent = document.querySelector('.top-scroll-content');
+
+    function updateTopScrollWidth() {
+        const tableWidth = document.querySelector('#previewTable').offsetWidth;
+        topScrollContent.style.width = tableWidth + 'px';
+    }
+
+    window.addEventListener('resize', updateTopScrollWidth);
+    updateTopScrollWidth();
+
+    tableWrapper.addEventListener('scroll', function(e) {
+        topScroll.scrollLeft = e.target.scrollLeft;
+    });
+
+    topScroll.addEventListener('scroll', function(e) {
+        tableWrapper.scrollLeft = e.target.scrollLeft;
+    });
+
+    // Ordenamiento de tabla
+    const table = document.getElementById('previewTable');
+    const headers = table.querySelectorAll('th.sortable');
+    let currentSort = { column: null, direction: 'asc' };
+
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const column = header.dataset.column;
+            const isAsc = currentSort.column === column && currentSort.direction === 'asc';
+            
+            currentSort = {
+                column: column,
+                direction: isAsc ? 'desc' : 'asc'
+            };
+
+            headers.forEach(h => h.classList.remove('asc', 'desc'));
+            header.classList.add(currentSort.direction);
+
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const columnIndex = Array.from(headers).indexOf(header);
+
+            const sortedRows = rows.sort((a, b) => {
+                const aValue = a.cells[columnIndex].textContent;
+                const bValue = b.cells[columnIndex].textContent;
+                
+                const aNum = parseFloat(aValue);
+                const bNum = parseFloat(bValue);
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return currentSort.direction === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+                
+                return currentSort.direction === 'asc' 
+                    ? aValue.localeCompare(bValue)
+                    : bValue.localeCompare(aValue);
+            });
+
+            tbody.append(...sortedRows);
+        });
+    });
+});
+
+function updateColumns() {
+    const form = document.getElementById('columnSelectorForm');
+    const formData = new FormData(form);
+    
+    fetch(`${window.location.pathname}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+</script>
+
+<style>
+.table-container {
+    margin: 15px 0;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 600px;
+}
+
+.top-scroll-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 15px;
+    margin-bottom: 5px;
+}
+
+.top-scroll-content {
+    height: 1px;
+}
+
+.table thead th {
+    position: sticky;
+    top: 0;
+    background: #1e1e2f;
+    z-index: 1;
+    cursor: pointer;
+}
+
+.sortable {
+    cursor: pointer;
+}
+
+.sortable i {
+    opacity: 0.3;
+    margin-left: 5px;
+}
+
+.sortable.asc i {
+    opacity: 1;
+    transform: rotate(180deg);
+}
+
+.sortable.desc i {
+    opacity: 1;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e1e2f;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3358f4;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4466f2;
+}
+
+.modal-content {
+    background: #1e1e2f;
+    color: white;
+}
+
+.modal-header {
+    border-bottom: 1px solid #2b3553;
+}
+
+.modal-footer {
+    border-top: 1px solid #2b3553;
+}
+
+.table td, .table th {
+    padding: 12px 15px;
+    white-space: nowrap;
+}
+
+.modal-dialog.modal-lg {
+    max-width: 1000px;  /* Hacemos el modal más ancho */
+    margin: 20px auto;  /* Reducimos el margen superior */
+}
+
+.modal-content {
+    background: #1e1e2f;
+    color: white;
+    max-height: calc(100vh - 100px);  /* Altura máxima ajustada */
+}
+
+.modal-body {
+    padding: 20px 25px;
+}
+
+.columns-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;  /* Reducimos el espacio entre elementos */
+}
+
+.form-check {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding: 8px 12px;  /* Reducimos el padding */
+    margin: 0;
+}
+
+.modal-footer {
+    padding: 10px 25px;  /* Reducimos el padding */
+    background: #1e1e2f;
+    border-top: 1px solid #2b3553;
+}
+
+.modal-header {
+    padding: 10px 25px;  /* Reducimos el padding */
+    background: #1e1e2f;
+    border-bottom: 1px solid #2b3553;
+}
+
+/* Ajustamos el tamaño del texto si es necesario */
+.form-check-label {
+    font-size: 14px;
+}
+</style>
+{% endblock %}

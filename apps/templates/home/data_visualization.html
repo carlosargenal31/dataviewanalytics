@@ -1,0 +1,569 @@
+{% extends "layouts/base.html" %}
+{% load custom_filters %}
+
+{% block title %} Visualización de Datos {% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-sm-6 text-left">
+                            <h5 class="card-category">Visualización</h5>
+                            <h2 class="card-title">{{ file.name }}</h2>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="btn-group float-right">
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#columnSelector">
+                                    <i class="tim-icons icon-settings"></i> Configurar Gráfico
+                                </button>
+                                <div class="btn-group ml-2">
+                                    <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="tim-icons icon-download"></i> Exportar
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <a class="dropdown-item" href="#" onclick="exportAsImage()">
+                                            <i class="tim-icons icon-image-02"></i> Exportar como PNG
+                                        </a>
+                                        <a class="dropdown-item" href="#" onclick="exportAsPDF()">
+                                            <i class="tim-icons icon-paper"></i> Exportar como PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <a href="{% url 'data-selection' %}" class="btn btn-primary btn-sm">Volver</a>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-container">
+                            <div class="welcome-screen" id="welcomeScreen">
+                                <div class="welcome-content">
+                                    <i class="tim-icons icon-chart-bar-32 welcome-icon"></i>
+                                    <h3>Bienvenido al Visualizador de Datos</h3>
+                                    <p>Configure su gráfico siguiendo estos pasos:</p>
+                                    <div class="steps-container">
+                                        <div class="step">
+                                            <div class="step-number">1</div>
+                                            <div class="step-content">
+                                                <h4>Seleccione el Tipo de Gráfico</h4>
+                                                <p>Elija entre gráficos de líneas, barras, circular y más</p>
+                                            </div>
+                                        </div>
+                                        <div class="step">
+                                            <div class="step-number">2</div>
+                                            <div class="step-content">
+                                                <h4>Configure los Datos</h4>
+                                                <p>Seleccione las columnas para los ejes X e Y</p>
+                                            </div>
+                                        </div>
+                                        <div class="step">
+                                            <div class="step-number">3</div>
+                                            <div class="step-content">
+                                                <h4>Personalice su Visualización</h4>
+                                                <p>Añada título, leyenda y ajuste la visualización</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                            <canvas id="mainChart" style="display: none;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para configuración del gráfico -->
+<div class="modal fade" id="columnSelector" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-higher" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Configurar Gráfico</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="chartConfigForm" method="post">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label>Tipo de Gráfico</label>
+                        <div class="select-wrapper">
+                            <select class="form-control select-dropdown" name="chart_type">
+                                {% for chart_type in chart_types %}
+                                <option value="{{ chart_type.value }}">{{ chart_type.label }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="select-arrow">
+                                <i class="tim-icons icon-minimal-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Título del Gráfico</label>
+                        <input type="text" class="form-control" name="chart_title" placeholder="Ingrese el título">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Leyenda</label>
+                        <input type="text" class="form-control" name="chart_subtitle" placeholder="Ingrese el subtítulo">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Columna para eje X</label>
+                        <div class="select-wrapper">
+                            <select class="form-control select-dropdown" name="x_axis">
+                                {% for column in columns %}
+                                <option value="{{ column }}">{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="select-arrow">
+                                <i class="tim-icons icon-minimal-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Columna para eje Y</label>
+                        <div class="select-wrapper">
+                            <select class="form-control select-dropdown" name="y_axis">
+                                {% for column in columns %}
+                                <option value="{{ column }}">{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="select-arrow">
+                                <i class="tim-icons icon-minimal-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="showLegend" name="show_legend" checked>
+                            <label class="custom-control-label" for="showLegend">Mostrar Leyenda</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="updateChart()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+<!-- Nuevas librerías para exportación -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+var myChart = null;
+
+// Datos iniciales
+var initialLabels = JSON.parse('{{ initial_labels|escapejs|safe }}');
+var initialValues = JSON.parse('{{ initial_values|escapejs|safe }}');
+
+function initChart(labels, data, config = {}) {
+    document.getElementById('welcomeScreen').style.display = 'none';
+    document.getElementById('mainChart').style.display = 'block';
+    var ctx = document.getElementById("mainChart").getContext("2d");
+    var gradientStroke = ctx.createLinearGradient(0, 230, 0, 50);
+
+    gradientStroke.addColorStop(1, 'rgba(72,72,176,0.2)');
+    gradientStroke.addColorStop(0.2, 'rgba(72,72,176,0.0)');
+    gradientStroke.addColorStop(0, 'rgba(119,52,169,0)');
+
+    var chartType = config.chart_type || 'line';
+    var showLegend = config.show_legend !== undefined ? config.show_legend : true;
+
+    var chartData = {
+        labels: labels,
+        datasets: [{
+            label: config.chart_subtitle || "Datos",
+            fill: chartType === 'line',
+            backgroundColor: chartType === 'line' ? gradientStroke : [
+                'rgba(255, 99, 132, 0.7)',
+                'rgba(54, 162, 235, 0.7)',
+                'rgba(255, 206, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)',
+                'rgba(153, 102, 255, 0.7)',
+                'rgba(255, 159, 64, 0.7)'
+            ],
+            borderColor: '#d048b6',
+            borderWidth: 2,
+            borderDash: [],
+            borderDashOffset: 0.0,
+            pointBackgroundColor: '#d048b6',
+            pointBorderColor: 'rgba(255,255,255,0)',
+            pointHoverBackgroundColor: '#d048b6',
+            pointBorderWidth: 20,
+            pointHoverRadius: 4,
+            pointHoverBorderWidth: 15,
+            pointRadius: 4,
+            data: data
+        }]
+    };
+
+    var options = {
+        maintainAspectRatio: false,
+        legend: {
+            display: showLegend,
+            position: 'top',
+            labels: {
+                fontColor: '#9a9a9a'
+            }
+        },
+        title: {
+            display: !!config.chart_title,
+            text: config.chart_title || '',
+            fontColor: '#9a9a9a',
+            fontSize: 16
+        },
+        tooltips: {
+            backgroundColor: '#fff',
+            titleFontColor: '#333',
+            bodyFontColor: '#666',
+            bodySpacing: 4,
+            xPadding: 12,
+            mode: "nearest",
+            intersect: 0,
+            position: "nearest"
+        },
+        responsive: true,
+        scales: chartType !== 'pie' && chartType !== 'doughnut' ? {
+            yAxes: [{
+                barPercentage: 1.6,
+                gridLines: {
+                    drawBorder: false,
+                    color: 'rgba(29,140,248,0.0)',
+                    zeroLineColor: "transparent"
+                },
+                ticks: {
+                    padding: 20,
+                    fontColor: "#9a9a9a"
+                }
+            }],
+            xAxes: [{
+                barPercentage: 1.6,
+                gridLines: {
+                    drawBorder: false,
+                    color: 'rgba(220,53,69,0.1)',
+                    zeroLineColor: "transparent"
+                },
+                ticks: {
+                    padding: 20,
+                    fontColor: "#9a9a9a"
+                }
+            }]
+        } : {}
+    };
+
+    if (myChart) {
+        myChart.destroy();
+    }
+    
+    myChart = new Chart(ctx, {
+        type: chartType,
+        data: chartData,
+        options: options
+    });
+}
+
+function updateChart() {
+    var form = document.getElementById('chartConfigForm');
+    var formData = new FormData(form);
+    formData.append('show_legend', document.getElementById('showLegend').checked);
+    
+    fetch(window.location.pathname, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (data.success) {
+            initChart(data.labels, data.values, {
+                chart_type: data.chart_type,
+                chart_title: data.chart_title,
+                chart_subtitle: data.chart_subtitle,
+                show_legend: data.show_legend
+            });
+            $('#columnSelector').modal('hide');
+        }
+    })
+    .catch(function(error) {
+        console.error('Error:', error);
+    });
+}
+
+// Inicializar el gráfico
+document.addEventListener('DOMContentLoaded', function() {
+    initChart(initialLabels, initialValues);
+});
+
+function exportAsImage() {
+    const chartContainer = document.querySelector('.chart-container');
+    const chartTitle = document.querySelector('.card-title').textContent;
+    
+    html2canvas(chartContainer, {
+        backgroundColor: '#1e1e2f',
+        scale: 2
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `${chartTitle.trim()}_grafico.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+function exportAsPDF() {
+    const { jsPDF } = window.jspdf;
+    const chartContainer = document.querySelector('.chart-container');
+    const chartTitle = document.querySelector('.card-title').textContent;
+    
+    html2canvas(chartContainer, {
+        backgroundColor: '#1e1e2f',
+        scale: 2
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm'
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+        const imgX = (pdfWidth - imgWidth * ratio) / 2;
+        const imgY = 30;
+
+        // Añadir título
+        pdf.setFontSize(16);
+        pdf.setTextColor(40);
+        pdf.text(chartTitle.trim(), pdfWidth/2, 20, { align: 'center' });
+        
+        // Añadir imagen
+        pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+        
+        // Añadir pie de página
+        pdf.setFontSize(10);
+        pdf.setTextColor(100);
+        const today = new Date().toLocaleDateString();
+        pdf.text(`Exportado el: ${today}`, 10, pdfHeight - 10);
+        
+        pdf.save(`${chartTitle.trim()}_grafico.pdf`);
+    });
+}
+</script>
+
+<style>
+.chart-container {
+    position: relative;
+    height: 500px;
+    width: 100%;
+}
+
+.modal-content {
+    background: #1e1e2f;
+    color: white;
+}
+
+.modal-header {
+    border-bottom: 1px solid #2b3553;
+}
+
+.modal-footer {
+    border-top: 1px solid #2b3553;
+}
+
+.form-control {
+    background-color: #2b3553;
+    border: 1px solid #2b3553;
+    color: white;
+}
+
+.form-control:focus {
+    background-color: #343a40;
+    color: white;
+}
+
+.select-wrapper {
+    position: relative;
+}
+
+.select-dropdown {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #2b3553;
+    border: 1px solid #2b3553;
+    color: white;
+    padding: 0.5rem 2rem 0.5rem 0.5rem;
+    width: 100%;
+    cursor: pointer;
+}
+
+.select-arrow {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    color: #9a9a9a;
+    pointer-events: none;
+}
+
+.modal-dialog.modal-lg {
+    max-width: 600px;
+}
+
+.modal-higher {
+    margin-top: 50px !important;
+}
+
+.custom-control-input:checked ~ .custom-control-label::before {
+    background-color: #e14eca;
+    border-color: #e14eca;
+}
+
+.custom-switch .custom-control-label::before {
+    background-color: #2b3553;
+}
+
+/* Nuevos estilos para el menú de exportación */
+.dropdown-menu {
+    background: #1e1e2f;
+    border: 1px solid #2b3553;
+}
+
+.dropdown-item {
+    color: #9a9a9a;
+    padding: 0.5rem 1rem;
+}
+
+.dropdown-item:hover {
+    background: #2b3553;
+    color: white;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+}
+
+.btn-group .btn {
+    margin: 0 2px;
+}
+
+.welcome-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #27293d;
+    border-radius: 8px;
+}
+
+.welcome-content {
+    text-align: center;
+    padding: 2rem;
+    max-width: 800px;
+}
+
+.welcome-icon {
+    font-size: 4rem;
+    color: #e14eca;
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+.welcome-content h3 {
+    color: white;
+    margin-bottom: 1rem;
+    font-size: 1.75rem;
+}
+
+.welcome-content p {
+    color: #9a9a9a;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+
+.steps-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+    margin: 2rem 0;
+}
+
+.step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    text-align: left;
+    background: #1e1e2f;
+    padding: 1.5rem;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 250px;
+    border: 1px solid #2b3553;
+    transition: all 0.3s ease;
+}
+
+.step:hover {
+    transform: translateY(-5px);
+    border-color: #e14eca;
+    box-shadow: 0 5px 15px rgba(225, 78, 202, 0.1);
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    background: #e14eca;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.step-content h4 {
+    color: white;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.step-content p {
+    color: #9a9a9a;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}

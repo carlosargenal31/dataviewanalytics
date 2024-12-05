@@ -1,0 +1,288 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Gestión de Datos {% endblock %}
+
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+<div class="content">
+    {% csrf_token %}
+
+    <!-- Card de importación -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-sm-6 text-left">
+                            <h5 class="card-category">Importación de Datos</h5>
+                            <h2 class="card-title">Gestión de Datos</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Formulario de carga -->
+                    <form id="uploadForm" method="post" enctype="multipart/form-data" class="mb-4">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><strong>Archivo CSV</strong></label>
+                                    <input id="fileInput" type="file" class="form-control" name="csv_file" accept=".csv"
+                                        required>
+                                    <small id="fileName" class="form-text text-danger font-weight-bold mt-2">No se ha
+                                        seleccionado ningún archivo</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><strong>Descripción</strong></label>
+                                    <input id="description" type="text" class="form-control" name="description"
+                                        required>
+                                    <small id="descriptionError" class="form-text text-danger d-none">La descripción es
+                                        obligatoria</small>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Cargar Archivo</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Favorito -->
+    <div class="modal fade" id="favoriteModal" tabindex="-1" role="dialog" aria-labelledby="favoriteModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="modal-title" id="favoriteModalLabel">Archivo Favorito</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p>Este archivo se utilizará para mostrar los gráficos en el dashboard.</p>
+                        <p>¿Deseas continuar?</p>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="confirmFavorite">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de archivos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Archivos Cargados</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table tablesorter">
+                            <thead class="text-primary">
+                                <tr>
+                                    <th>Favorito</th>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Fecha de Carga</th>
+                                    <th>Filas</th>
+                                    <th class="text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for file in files %}
+                                <tr>
+                                    <td>
+                                        <button class="btn btn-link favorite-btn" data-file-id="{{ file.id }}"
+                                            data-is-favorite="{{ file.is_favorite|yesno:'true,false' }}"
+                                            title="{{ file.is_favorite|yesno:'Quitar de favoritos,Marcar como favorito' }}">
+                                            <i
+                                                class="tim-icons icon-heart-2{% if file.is_favorite %} text-danger{% endif %}"></i>
+                                        </button>
+                                    </td>
+                                    <td>{{ file.name }}</td>
+                                    <td>{{ file.description }}</td>
+                                    <td>{{ file.uploaded_at|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ file.row_count }}</td>
+                                    <td class="text-right">
+                                        <a href="{% url 'data-preview' file.id %}" class="btn btn-link" title="Ver">
+                                            <i class="tim-icons icon-zoom-split"></i>
+                                        </a>
+                                        <a href="{% url 'edit-data' file.id %}" class="btn btn-link" title="Editar">
+                                            <i class="tim-icons icon-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-link delete-file-btn" data-file-id="{{ file.id }}"
+                                            title="Eliminar">
+                                            <i class="tim-icons icon-trash-simple"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Código original para manejo de archivos
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileName');
+        const descriptionInput = document.getElementById('description');
+        const descriptionError = document.getElementById('descriptionError');
+        const form = document.getElementById('uploadForm');
+
+        // Mostrar nombre del archivo seleccionado
+        fileInput.addEventListener('change', function () {
+            const file = fileInput.files[0];
+            if (file) {
+                if (file.name.endsWith('.csv')) {
+                    fileNameDisplay.textContent = `Archivo seleccionado: ${file.name}`;
+                    fileNameDisplay.classList.remove('text-danger');
+                    fileNameDisplay.classList.add('text-success');
+                } else {
+                    fileNameDisplay.textContent = 'Error: Solo se permiten archivos CSV.';
+                    fileNameDisplay.classList.remove('text-success');
+                    fileNameDisplay.classList.add('text-danger');
+                    fileInput.value = '';
+                }
+            } else {
+                fileNameDisplay.textContent = 'No se ha seleccionado ningún archivo';
+                fileNameDisplay.classList.remove('text-success');
+                fileNameDisplay.classList.add('text-danger');
+            }
+        });
+
+        // Validación del formulario
+        form.addEventListener('submit', function (e) {
+            if (!descriptionInput.value.trim()) {
+                e.preventDefault();
+                descriptionError.classList.remove('d-none');
+            } else {
+                descriptionError.classList.add('d-none');
+            }
+        });
+
+        // Código nuevo para manejo de favoritos
+        let selectedFileId = null;
+        let selectedButton = null;
+
+        const favoriteButtons = document.querySelectorAll('.favorite-btn');
+        favoriteButtons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                selectedFileId = this.getAttribute('data-file-id');
+                selectedButton = this;
+
+                if (this.getAttribute('data-is-favorite') !== 'true') {
+                    $('#favoriteModal').modal('show');
+                } else {
+                    handleFavoriteToggle(selectedFileId, this);
+                }
+            });
+        });
+
+        document.getElementById('confirmFavorite').addEventListener('click', function () {
+            if (selectedFileId && selectedButton) {
+                handleFavoriteToggle(selectedFileId, selectedButton);
+                $('#favoriteModal').modal('hide');
+            }
+        });
+
+        // Código original para eliminación
+        const deleteButtons = document.querySelectorAll('.delete-file-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const fileId = this.getAttribute('data-file-id');
+                deleteFile(fileId);
+            });
+        });
+    });
+
+    // Función original de eliminación
+    function deleteFile(fileId) {
+        if (confirm('¿Estás seguro de que deseas eliminar este archivo?')) {
+            fetch(`/delete-file/${fileId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+    }
+
+    // Función nueva para manejar favoritos
+    function handleFavoriteToggle(fileId, button) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        $.ajax({
+            url: `/toggle-favorite/${fileId}/`,
+            type: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            success: function (response) {
+                if (response.success) {
+                    document.querySelectorAll('.favorite-btn').forEach(btn => {
+                        const btnIcon = btn.querySelector('i');
+                        btnIcon.classList.remove('text-danger');
+                        btn.setAttribute('data-is-favorite', 'false');
+                    });
+
+                    if (response.is_favorite) {
+                        const icon = button.querySelector('i');
+                        icon.classList.add('text-danger');
+                        button.setAttribute('data-is-favorite', 'true');
+
+                        $.notify({
+                            message: `${response.file_name} ha sido marcado como favorito`
+                        }, {
+                            type: 'success',
+                            delay: 3000,
+                            placement: {
+                                from: 'top',
+                                align: 'right'
+                            }
+                        });
+                    }
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('Error:', error);
+                $.notify({
+                    message: 'Error al actualizar favorito'
+                }, {
+                    type: 'danger',
+                    delay: 3000,
+                    placement: {
+                        from: 'top',
+                        align: 'right'
+                    }
+                });
+            }
+        });
+    }
+</script>
+{% endblock javascripts %}

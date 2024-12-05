@@ -1,0 +1,603 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Dashboard {% endblock %}
+
+{% block content %}
+<div class="content">
+    <!-- Gráfico de Performance -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-chart">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-sm-6 text-left">
+                            <h5 class="card-category">Rendimiento General</h5>
+                            <h2 class="card-title">Total Resultados: 0</h2>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="btn-group btn-group-toggle float-right" data-toggle="buttons">
+                                <label class="btn btn-sm btn-primary btn-simple active" id="0">
+                                    <input type="radio" name="options" checked>
+                                    <span class="d-none d-sm-block d-md-block d-lg-block d-xl-block">Resultados</span>
+                                    <span class="d-block d-sm-none">
+                                        <i class="tim-icons icon-single-02"></i>
+                                    </span>
+                                </label>
+                                <label class="btn btn-sm btn-primary btn-simple" id="1">
+                                    <input type="radio" name="options">
+                                    <span class="d-none d-sm-block d-md-block d-lg-block d-xl-block">Alcance</span>
+                                    <span class="d-block d-sm-none">
+                                        <i class="tim-icons icon-gift-2"></i>
+                                    </span>
+                                </label>
+                                <label class="btn btn-sm btn-primary btn-simple" id="2">
+                                    <input type="radio" name="options">
+                                    <span class="d-none d-sm-block d-md-block d-lg-block d-xl-block">Impresiones</span>
+                                    <span class="d-block d-sm-none">
+                                        <i class="tim-icons icon-tap-02"></i>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="chartBig1"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Gráfico de Clics en el enlace -->
+        <div class="col-lg-4">
+            <div class="card card-chart">
+                <div class="card-header">
+                    <h5 class="card-category">Clics en el enlace</h5>
+                    <h3 class="card-title"><i class="tim-icons icon-bell-55 text-primary"></i> <span
+                            id="totalClicks">0</span></h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="chartLinePurple"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Gráfico de Seguidores (ahora con estilo de barras) -->
+        <div class="col-lg-4">
+            <div class="card card-chart">
+                <div class="card-header">
+                    <h5 class="card-category">Seguidores o Me gusta</h5>
+                    <h3 class="card-title"><i class="tim-icons icon-delivery-fast text-info"></i> <span
+                            id="totalFollowers">0</span></h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="chartLineGreen"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Gráfico de CPC (ahora con líneas) -->
+        <div class="col-lg-4">
+            <div class="card card-chart">
+                <div class="card-header">
+                    <h5 class="card-category">CPC por Campaña</h5>
+                    <h3 class="card-title"><i class="tim-icons icon-send text-success"></i> <span
+                            id="avgCPC">0</span> HNL</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="CountryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Campañas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Resumen de Campañas</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table tablesorter">
+                            <thead class="text-primary">
+                                <tr>
+                                    <th>Campaña</th>
+                                    <th>Impresiones</th>
+                                    <th>Resultados</th>
+                                    <th>Presupuesto (HNL)</th>
+                                    <th>Gasto (HNL)</th>
+                                    <th>CPC (HNL)</th>
+                                    <th>CPM (HNL)</th>
+                                    <th>CTR (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="campaignsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script>
+    // Variables globales
+    let charts = {};
+    let currentMetric = 'results';
+
+    // Configuraciones de gráficos
+    const gradientChartOptionsConfigurationWithTooltipPurple = {
+        maintainAspectRatio: false,
+        legend: {
+            display: false
+        },
+        tooltips: {
+            backgroundColor: '#f5f5f5',
+            titleFontColor: '#333',
+            bodyFontColor: '#666',
+            bodySpacing: 4,
+            xPadding: 12,
+            mode: "nearest",
+            intersect: 0,
+            position: "nearest"
+        },
+        responsive: true,
+        scales: {
+            yAxes: [{
+                barPercentage: 1.6,
+                gridLines: {
+                    drawBorder: false,
+                    color: 'rgba(29,140,248,0.0)',
+                    zeroLineColor: "transparent",
+                },
+                ticks: {
+                    suggestedMin: 60,
+                    suggestedMax: 125,
+                    padding: 20,
+                    fontColor: "#9a9a9a"
+                }
+            }],
+            xAxes: [{
+                barPercentage: 1.6,
+                gridLines: {
+                    drawBorder: false,
+                    color: 'rgba(225,78,202,0.1)',
+                    zeroLineColor: "transparent",
+                },
+                ticks: {
+                    padding: 20,
+                    fontColor: "#9a9a9a"
+                }
+            }]
+        }
+    };
+
+    const gradientChartOptionsConfigurationWithTooltipGreen = {
+        maintainAspectRatio: false,
+        legend: {
+            display: false
+        },
+        tooltips: {
+            backgroundColor: '#f5f5f5',
+            titleFontColor: '#333',
+            bodyFontColor: '#666',
+            bodySpacing: 4,
+            xPadding: 12,
+            mode: "nearest",
+            intersect: 0,
+            position: "nearest"
+        },
+        responsive: true,
+        scales: {
+            yAxes: [{
+                barPercentage: 1.6,
+                gridLines: {
+                    drawBorder: false,
+                    color: 'rgba(29,140,248,0.0)',
+                    zeroLineColor: "transparent",
+                },
+                ticks: {
+                    suggestedMin: 60,
+                    suggestedMax: 125,
+                    padding: 20,
+                    fontColor: "#9a9a9a"
+                }
+            }],
+            xAxes: [{
+                barPercentage: 1.6,
+                gridLines: {
+                    drawBorder: false,
+                    color: 'rgba(225,78,202,0.1)',
+                    zeroLineColor: "transparent",
+                },
+                ticks: {
+                    padding: 20,
+                    fontColor: "#9a9a9a"
+                }
+            }]
+        }
+    };
+
+    // Inicialización de los gráficos
+    function initializeCharts() {
+        initializePerformanceChart();
+        initializeReachChart();
+        initializeCPCChart();
+        initializeResultsChart();
+    }
+
+    function initializePerformanceChart() {
+        const ctx = document.getElementById("chartBig1").getContext("2d");
+        const gradientStroke = ctx.createLinearGradient(0, 230, 0, 50);
+
+        gradientStroke.addColorStop(1, 'rgba(72,72,176,0.1)');
+        gradientStroke.addColorStop(0.4, 'rgba(72,72,176,0.0)');
+        gradientStroke.addColorStop(0, 'rgba(119,52,169,0)');
+
+        charts.performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Resultados",
+                    fill: true,
+                    backgroundColor: gradientStroke,
+                    borderColor: '#d346b1',
+                    borderWidth: 2,
+                    borderDash: [],
+                    borderDashOffset: 0.0,
+                    pointBackgroundColor: '#d346b1',
+                    pointBorderColor: 'rgba(255,255,255,0)',
+                    pointHoverBackgroundColor: '#d346b1',
+                    pointBorderWidth: 20,
+                    pointHoverRadius: 4,
+                    pointHoverBorderWidth: 15,
+                    pointRadius: 4,
+                    data: []
+                }]
+            },
+            options: gradientChartOptionsConfigurationWithTooltipPurple
+        });
+    }
+
+    function initializeReachChart() {
+        const ctx = document.getElementById("chartLinePurple").getContext("2d");
+        const gradientStroke = ctx.createLinearGradient(0, 230, 0, 50);
+
+        gradientStroke.addColorStop(1, 'rgba(72,72,176,0.2)');
+        gradientStroke.addColorStop(0.2, 'rgba(72,72,176,0.0)');
+        gradientStroke.addColorStop(0, 'rgba(119,52,169,0)');
+
+        charts.reachChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Alcance",
+                    fill: true,
+                    backgroundColor: gradientStroke,
+                    borderColor: '#d048b6',
+                    borderWidth: 2,
+                    borderDash: [],
+                    borderDashOffset: 0.0,
+                    pointBackgroundColor: '#d048b6',
+                    pointBorderColor: 'rgba(255,255,255,0)',
+                    pointHoverBackgroundColor: '#d048b6',
+                    pointBorderWidth: 20,
+                    pointHoverRadius: 4,
+                    pointHoverBorderWidth: 15,
+                    pointRadius: 4,
+                    data: []
+                }]
+            },
+            options: gradientChartOptionsConfigurationWithTooltipPurple
+        });
+    }
+
+    function initializeCPCChart() {
+    const ctx = document.getElementById("CountryChart").getContext("2d");
+    const gradientStroke = ctx.createLinearGradient(0, 230, 0, 50);
+
+    gradientStroke.addColorStop(1, 'rgba(66,134,121,0.15)');
+    gradientStroke.addColorStop(0.4, 'rgba(66,134,121,0.0)');
+    gradientStroke.addColorStop(0, 'rgba(66,134,121,0)');
+
+    charts.cpcChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: "CPC",
+                fill: true,
+                backgroundColor: gradientStroke,
+                borderColor: '#00d6b4',
+                borderWidth: 2,
+                borderDash: [],
+                borderDashOffset: 0.0,
+                pointBackgroundColor: '#00d6b4',
+                pointBorderColor: 'rgba(255,255,255,0)',
+                pointHoverBackgroundColor: '#00d6b4',
+                pointBorderWidth: 20,
+                pointHoverRadius: 4,
+                pointHoverBorderWidth: 15,
+                pointRadius: 4,
+                data: []
+            }]
+        },
+        options: gradientChartOptionsConfigurationWithTooltipGreen
+    });
+}
+
+function initializeResultsChart() {
+    const ctx = document.getElementById("chartLineGreen").getContext("2d");
+    const gradientStroke = ctx.createLinearGradient(0, 230, 0, 50);
+
+    gradientStroke.addColorStop(1, 'rgba(29,140,248,0.2)');
+    gradientStroke.addColorStop(0.4, 'rgba(29,140,248,0.0)');
+    gradientStroke.addColorStop(0, 'rgba(29,140,248,0)');
+
+    charts.resultsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Seguidores",
+                fill: true,
+                backgroundColor: gradientStroke,
+                hoverBackgroundColor: gradientStroke,
+                borderColor: '#1f8ef1',
+                borderWidth: 2,
+                borderDash: [],
+                borderDashOffset: 0.0,
+                data: []
+            }]
+        },
+        options: gradientChartOptionsConfigurationWithTooltipPurple
+    });
+}
+
+    // Función para cargar datos de una métrica específica
+    function loadMetricData(metricType) {
+    try {
+        console.log('Cargando métrica:', metricType);
+        fetch('/api/get-favorite-data/')
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    // Calcular totales
+                    const totals = {
+                        results: data.reduce((sum, row) => sum + (parseFloat(row['Resultados']) || 0), 0),
+                        reach: data.reduce((sum, row) => sum + (parseFloat(row['Alcance']) || 0), 0),
+                        impressions: data.reduce((sum, row) => sum + (parseFloat(row['Impresiones']) || 0), 0)
+                    };
+
+                    // Actualizar título del gráfico principal con el total correspondiente
+                    const cardTitle = document.querySelector('.card-title');
+                    switch (metricType) {
+                        case 'reach':
+                            cardTitle.textContent = `Total Alcance: ${totals.reach.toLocaleString()}`;
+                            break;
+                        case 'impressions':
+                            cardTitle.textContent = `Total Impresiones: ${totals.impressions.toLocaleString()}`;
+                            break;
+                        default: // 'results'
+                            cardTitle.textContent = `Total Resultados: ${totals.results.toLocaleString()}`;
+                            break;
+                    }
+
+                    const formattedData = data.map(row => {
+                        let value;
+                        switch (metricType) {
+                            case 'reach':
+                                value = row['Alcance'];
+                                break;
+                            case 'impressions':
+                                value = row['Impresiones'];
+                                break;
+                            default: // 'results'
+                                value = row['Resultados'];
+                                break;
+                        }
+                        return {
+                            'Nombre de la campaña': row['Nombre de la campaña'],
+                            'valor': parseFloat(value) || 0
+                        };
+                    });
+
+                    updatePerformanceChart(formattedData, metricType);
+                    updateSecondaryCharts(data);
+                    updateTable(data);
+                    updateMetrics(data);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    } catch (error) {
+        console.error('Error cargando datos:', error);
+    }
+}
+
+    // Funciones de actualización
+    function updatePerformanceChart(data, metricType) {
+        const metricLabels = {
+            'results': 'Resultados',
+            'reach': 'Alcance',
+            'impressions': 'Impresiones'
+        };
+
+        const labels = data.map(row => row['Nombre de la campaña']);
+        const values = data.map(row => row.valor);
+
+        if (charts.performanceChart) {
+            charts.performanceChart.data.labels = labels;
+            charts.performanceChart.data.datasets[0].data = values;
+            charts.performanceChart.data.datasets[0].label = metricLabels[metricType];
+
+            const validValues = values.filter(v => !isNaN(v) && v !== null);
+            const minValue = Math.min(...validValues);
+            const maxValue = Math.max(...validValues);
+
+            charts.performanceChart.options.scales.yAxes[0].ticks.suggestedMin = minValue * 0.9
+            charts.performanceChart.options.scales.yAxes[0].ticks.suggestedMax = maxValue * 1.1;
+            charts.performanceChart.options.tooltips.callbacks.label = function (tooltipItem) {
+                return `${metricLabels[metricType]}: ${tooltipItem.yLabel.toLocaleString()}`;
+            };
+            charts.performanceChart.update();
+        }
+    }
+
+    function updateSecondaryCharts(data) {
+    // Calcular totales
+    const totalClicks = data.reduce((sum, row) => sum + (parseFloat(row['Clics en el enlace']) || 0), 0);
+    const totalFollowers = data.reduce((sum, row) => sum + (parseFloat(row['Seguidores o Me gusta']) || 0), 0);
+    const avgCPC = data.reduce((sum, row) => sum + (parseFloat(row['CPC (Coste por clic en el enlace)']) || 0), 0) / data.length;
+
+    // Actualizar los títulos con los totales
+    document.querySelector('#totalClicks').textContent = totalClicks.toLocaleString();
+    document.querySelector('#avgCPC').textContent = avgCPC.toFixed(2);
+    document.querySelector('#totalFollowers').textContent = totalFollowers.toLocaleString();
+
+    // Actualizar gráfico de Clics en el enlace
+    const clicksData = {
+        labels: data.map(row => row['Nombre de la campaña']),
+        values: data.map(row => parseFloat(row['Clics en el enlace']) || 0)
+    };
+    
+    if (charts.reachChart) {
+        charts.reachChart.data.labels = clicksData.labels;
+        charts.reachChart.data.datasets[0].label = `Total Clics: ${totalClicks.toLocaleString()}`;
+        charts.reachChart.data.datasets[0].data = clicksData.values;
+        charts.reachChart.update();
+    }
+
+    // Actualizar gráfico de CPC
+    const cpcData = {
+        labels: data.map(row => row['Nombre de la campaña']),
+        values: data.map(row => parseFloat(row['CPC (Coste por clic en el enlace)']) || 0)
+    };
+    
+    if (charts.cpcChart) {
+        charts.cpcChart.data.labels = cpcData.labels;
+        charts.cpcChart.data.datasets[0].label = `Promedio CPC: ${avgCPC.toFixed(2)} HNL`;
+        charts.cpcChart.data.datasets[0].data = cpcData.values;
+        charts.cpcChart.update();
+    }
+
+    // Actualizar gráfico de Seguidores
+    const followersData = {
+        labels: data.map(row => row['Nombre de la campaña']),
+        values: data.map(row => parseFloat(row['Seguidores o Me gusta']) || 0)
+    };
+    
+    if (charts.resultsChart) {
+        charts.resultsChart.data.labels = followersData.labels;
+        charts.resultsChart.data.datasets[0].label = `Total Seguidores: ${totalFollowers.toLocaleString()}`;
+        charts.resultsChart.data.datasets[0].data = followersData.values;
+        charts.resultsChart.update();
+    }
+}
+
+function updateMetrics(data) {
+    // Actualizar totales
+    const totalClicks = data.reduce((sum, row) => sum + (parseFloat(row['Clics en el enlace']) || 0), 0);
+    const avgCPC = data.reduce((sum, row) => sum + (parseFloat(row['CPC (Coste por clic en el enlace)']) || 0), 0) / data.length;
+    const totalFollowers = data.reduce((sum, row) => sum + (parseFloat(row['Seguidores o Me gusta']) || 0), 0);
+
+    // Actualizar elementos en el DOM
+    document.getElementById('totalClicks').textContent = totalClicks.toLocaleString();
+    document.getElementById('avgCPC').textContent = avgCPC.toFixed(2);
+    document.getElementById('totalFollowers').textContent = totalFollowers.toLocaleString();
+}
+
+    function updateTable(data) {
+        const tbody = document.getElementById('campaignsTableBody');
+        tbody.innerHTML = '';
+
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td>${row['Nombre de la campaña']}</td>
+            <td>${parseInt(row['Impresiones']).toLocaleString()}</td>
+            <td>${parseInt(row['Resultados']).toLocaleString()}</td>
+            <td>${parseFloat(row['Presupuesto de la campaña']).toLocaleString()}</td>
+            <td>${parseFloat(row['Importe gastado (HNL)']).toLocaleString()}</td>
+            <td>${parseFloat(row['CPC (Coste por clic en el enlace)']).toFixed(2)}</td>
+            <td>${parseFloat(row['CPM (coste por 1000 impresiones)']).toFixed(2)}</td>
+            <td>${parseFloat(row['CTR (porcentaje de clics en el enlace)']).toFixed(2)}%</td>
+        `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updateMetrics(data) {
+        // Calcular métricas totales y promedios
+        const totalReach = data.reduce((sum, row) => sum + (parseFloat(row['Alcance']) || 0), 0);
+        const avgCPC = data.reduce((sum, row) => sum + (parseFloat(row['CPC (Coste por clic en el enlace)']) || 0), 0) / data.length;
+        const avgCTR = data.reduce((sum, row) => sum + (parseFloat(row['CTR (porcentaje de clics en el enlace)']) || 0), 0) / data.length;
+
+        // Actualizar elementos en el DOM
+        document.getElementById('totalReach').textContent = totalReach.toLocaleString();
+        document.getElementById('avgCPC').textContent = avgCPC.toFixed(2);
+        document.getElementById('avgCTR').textContent = avgCTR.toFixed(2);
+    }
+
+    // Event listeners cuando se carga la página
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeCharts();
+        loadMetricData('results');
+
+        // Event listeners para los botones del gráfico principal
+        const buttons = document.querySelectorAll('.btn-group-toggle label');
+        buttons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                buttons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+
+                const metricType = this.id === '0' ? 'results' :
+                    this.id === '1' ? 'reach' :
+                        'impressions';
+
+                console.log('Cambiando a métrica:', metricType);
+                loadMetricData(metricType);
+            });
+        });
+    });
+</script>
+
+<style>
+    .form-control {
+        background-color: #27293d !important;
+        border: 1px solid #2b3553 !important;
+        color: white !important;
+        border-radius: 6px;
+        padding: 10px 15px;
+    }
+
+    .form-control:focus {
+        background-color: #2b3553 !important;
+        border-color: #e14eca !important;
+        box-shadow: none !important;
+    }
+
+    .form-label {
+        color: #9a9a9a;
+        margin-bottom: 0.5rem;
+    }
+
+    select.form-control option {
+        background-color: #27293d;
+        color: white;
+    }
+</style>
+{% endblock javascripts %}

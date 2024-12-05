@@ -1,0 +1,494 @@
+{% extends "layouts/base.html" %}
+{% load custom_filters %}
+
+{% block title %} Edición de Datos {% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-sm-6 text-left">
+                            <h5 class="card-category">Edición de Datos</h5>
+                            <h2 class="card-title">{{ file.name }}</h2>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="btn-group float-right">
+                                <button type="button" class="btn btn-success" id="addNewRow">
+                                    <i class="tim-icons icon-simple-add"></i> Agregar Fila
+                                </button>
+                                <button type="button" class="btn btn-danger" id="deleteSelectedRows">
+                                    <i class="tim-icons icon-simple-remove"></i> Eliminar Filas
+                                </button>
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#columnManager">
+                                    <i class="tim-icons icon-settings"></i> Gestionar Columnas
+                                </button>
+                                <button type="button" class="btn btn-success" id="saveChanges">
+                                    <i class="tim-icons icon-check-2"></i> Guardar Cambios
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <a href="{% url 'data-management' %}" class="btn btn-primary btn-sm">
+                            <i class="tim-icons icon-minimal-left"></i> Volver
+                        </a>
+                    </div>
+                    
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <div class="table-wrapper">
+                            <table class="table" id="editTable">
+                                <thead class="text-primary">
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <div class="form-check">
+                                                <label class="form-check-label">
+                                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                                    <span class="form-check-sign">
+                                                        <span class="check"></span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </th>
+                                        {% for column in visible_columns %}
+                                        <th class="sortable" data-column="{{ column }}">
+                                            {{ column }}
+                                            <i class="tim-icons icon-minimal-down"></i>
+                                        </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in records %}
+                                    <tr data-record-id="{{ record.id }}">
+                                        <td>
+                                            <div class="form-check">
+                                                <label class="form-check-label">
+                                                    <input class="form-check-input row-selector" type="checkbox">
+                                                    <span class="form-check-sign">
+                                                        <span class="check"></span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </td>
+                                        {% for column in visible_columns %}
+                                        <td>
+                                            <input type="text" class="form-control editable-cell" 
+                                                   data-original-value="{{ record.data|get_item:column }}"
+                                                   value="{{ record.data|get_item:column }}"
+                                                   data-column="{{ column }}">
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para gestión de columnas -->
+<div class="modal fade" id="columnManager" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Gestionar Columnas</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="columns-grid">
+                    {% for column in all_columns %}
+                    <div class="form-check">
+                        <label class="form-check-label">
+                            <input class="form-check-input column-selector" type="checkbox" 
+                                   name="columns" value="{{ column }}"
+                                   {% if column in visible_columns %}checked{% endif %}>
+                            {{ column }}
+                            <span class="form-check-sign">
+                                <span class="check"></span>
+                            </span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="saveColumnChanges">Aplicar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+.table-responsive {
+    margin: 15px 0;
+    border-radius: 8px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    max-height: 600px;
+}
+
+.editable-cell {
+    background: transparent;
+    border: 1px solid transparent;
+    color: inherit;
+    width: 100%;
+    padding: 5px;
+    transition: all 0.3s ease;
+}
+
+.editable-cell:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #3358f4;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(51, 88, 244, 0.25);
+}
+
+.editable-cell.changed {
+    border-color: #00f2c3;
+    background: rgba(0, 242, 195, 0.1);
+}
+
+.columns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    padding: 15px;
+}
+
+.form-check {
+    margin: 0;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.form-check:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-group {
+    gap: 8px;
+}
+
+.table th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.table th.sortable i {
+    opacity: 0.5;
+    transition: transform 0.3s ease;
+}
+
+.table th.sortable:hover i {
+    opacity: 1;
+}
+
+.table th.sortable.asc i {
+    transform: rotate(180deg);
+}
+</style>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+
+document.getElementById('addNewRow').addEventListener('click', function() {
+    const tbody = document.querySelector('#editTable tbody');
+    const tr = document.createElement('tr');
+    tr.dataset.recordId = 'new'; // Identificador temporal
+    
+    // Checkbox cell
+    const checkboxCell = document.createElement('td');
+    checkboxCell.innerHTML = `
+        <div class="form-check">
+            <label class="form-check-label">
+                <input class="form-check-input row-selector" type="checkbox">
+                <span class="form-check-sign">
+                    <span class="check"></span>
+                </span>
+            </label>
+        </div>
+    `;
+    tr.appendChild(checkboxCell);
+    
+    // Add cells for each column
+    visible_columns.forEach(column => {
+        const td = document.createElement('td');
+        td.innerHTML = `
+            <input type="text" class="form-control editable-cell" 
+                   data-original-value=""
+                   value=""
+                   data-column="${column}"
+                   required>
+        `;
+        tr.appendChild(td);
+    });
+    
+    tbody.appendChild(tr);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Obtener las columnas visibles del backend
+    let tableColumns = JSON.parse('{{ visible_columns|escapejs|safe }}');
+    const editedCells = new Set();
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    // Función para agregar fila
+    document.getElementById('addNewRow').addEventListener('click', function() {
+        const tbody = document.querySelector('#editTable tbody');
+        const tr = document.createElement('tr');
+        tr.dataset.recordId = 'new';
+        
+        // Checkbox cell
+        const checkboxCell = document.createElement('td');
+        checkboxCell.innerHTML = `
+            <div class="form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input row-selector" type="checkbox">
+                    <span class="form-check-sign">
+                        <span class="check"></span>
+                    </span>
+                </label>
+            </div>
+        `;
+        tr.appendChild(checkboxCell);
+        
+        // Agregar celdas para cada columna
+        tableColumns.forEach(column => {
+            const td = document.createElement('td');
+            td.innerHTML = `
+                <input type="text" class="form-control editable-cell" 
+                       data-original-value=""
+                       value=""
+                       data-column="${column}"
+                       required>
+            `;
+            tr.appendChild(td);
+        });
+        
+        tbody.appendChild(tr);
+    });
+
+    
+   
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const rowCheckboxes = document.querySelectorAll('.row-selector');
+
+    selectAllCheckbox.addEventListener('change', function() {
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Edición de celdas
+    document.querySelectorAll('.editable-cell').forEach(cell => {
+        cell.addEventListener('change', function() {
+            if (this.value !== this.dataset.originalValue) {
+                editedCells.add(this);
+                this.classList.add('changed');
+            } else {
+                editedCells.delete(this);
+                this.classList.remove('changed');
+            }
+        });
+    });
+
+    // Guardar cambios
+    document.getElementById('saveChanges').addEventListener('click', function() {
+        const emptyFields = document.querySelectorAll('.editable-cell:not([value])');
+    if (emptyFields.length > 0) {
+        notify('Todos los campos son requeridos', 'warning');
+        emptyFields.forEach(field => field.classList.add('is-invalid'));
+        return;
+    }
+        const changes = [];
+        editedCells.forEach(cell => {
+            const row = cell.closest('tr');
+            changes.push({
+                recordId: row.dataset.recordId,
+                column: cell.dataset.column,
+                value: cell.value
+            });
+        });
+
+        if (changes.length === 0) {
+            notify('No hay cambios para guardar', 'info');
+            return;
+        }
+
+        fetch(`/save-data-changes/${location.pathname.split('/')[2]}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ changes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                editedCells.clear();
+                document.querySelectorAll('.changed').forEach(el => {
+                    el.classList.remove('changed');
+                    el.dataset.originalValue = el.value;
+                });
+                notify('Cambios guardados correctamente', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            notify('Error al guardar los cambios', 'danger');
+        });
+    });
+
+   // En el bloque de JavaScript existente
+document.getElementById('saveColumnChanges').addEventListener('click', function() {
+    const selectedColumns = Array.from(document.querySelectorAll('.column-selector:checked'))
+        .map(checkbox => checkbox.value);
+
+    if (selectedColumns.length === 0) {
+        notify('Debes seleccionar al menos una columna', 'warning');
+        return;
+    }
+
+    fetch(`/update-columns/${location.pathname.split('/')[2]}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ columns: selectedColumns })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => Promise.reject(data));
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            notify('Columnas actualizadas correctamente', 'success');
+            setTimeout(() => location.reload(), 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        notify(error.error || 'Error al actualizar las columnas', 'danger');
+    });
+});
+
+// Actualizar el código de eliminación de filas
+document.getElementById('deleteSelectedRows').addEventListener('click', function() {
+    const selectedRows = document.querySelectorAll('.row-selector:checked');
+    if (selectedRows.length === 0) {
+        notify('No hay filas seleccionadas para eliminar', 'warning');
+        return;
+    }
+
+    if (confirm(`¿Estás seguro de que deseas eliminar ${selectedRows.length} fila(s)?`)) {
+        const recordIds = Array.from(selectedRows).map(checkbox => 
+            checkbox.closest('tr').dataset.recordId
+        );
+
+        fetch(`/delete-rows/${location.pathname.split('/')[2]}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ recordIds })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => Promise.reject(data));
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                selectedRows.forEach(checkbox => {
+                    checkbox.closest('tr').remove();
+                });
+                notify(`${data.deleted_count} fila(s) eliminada(s) correctamente`, 'success');
+                
+                // Actualizar el contador de filas si existe
+                const rowCountElement = document.querySelector('.row-count');
+                if (rowCountElement) {
+                    rowCountElement.textContent = data.new_total;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            notify(error.error || 'Error al eliminar las filas', 'danger');
+        });
+    }
+});
+
+    // Gestión de columnas
+    document.getElementById('saveColumnChanges').addEventListener('click', function() {
+        const selectedColumns = Array.from(document.querySelectorAll('.column-selector:checked'))
+            .map(checkbox => checkbox.value);
+
+        if (selectedColumns.length === 0) {
+            notify('Debes seleccionar al menos una columna', 'warning');
+            return;
+        }
+
+        fetch(`/update-columns/${location.pathname.split('/')[2]}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ columns: selectedColumns })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                throw new Error(data.error || 'Error al actualizar las columnas');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            notify('Error al actualizar las columnas', 'danger');
+        });
+    });
+
+    // Función helper para notificaciones
+    function notify(message, type) {
+        $.notify({
+            message: message
+        }, {
+            type: type,
+            timer: 3000,
+            placement: {
+                from: 'top',
+                align: 'right'
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

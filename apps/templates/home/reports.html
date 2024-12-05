@@ -1,0 +1,235 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Reportes {% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <h5 class="card-category">Gestión de Reportes</h5>
+                            <h2 class="card-title">Reportes</h2>
+                        </div>
+                        <div class="col-sm-6">
+                            <button class="btn btn-primary float-right" data-toggle="modal" data-target="#reportModal">
+                                <i class="tim-icons icon-simple-add"></i> Nuevo Reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead class="text-primary">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Archivo</th>
+                                    <th>Fecha</th>
+                                    <th class="text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in reports %}
+                                <tr>
+                                    <td>{{ report.name }}</td>
+                                    <td>{{ report.file.name }}</td>
+                                    <td>{{ report.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td class="text-right">
+                                        <button class="btn btn-link" onclick="editReport('{{ report.id }}')">
+                                            <i class="tim-icons icon-pencil"></i>
+                                        </button>
+                                        <a href="{% url 'export-report' report.id 'excel' %}" class="btn btn-link" data-toggle="tooltip" title="Exportar Excel">
+                                            <i class="tim-icons icon-paper"></i>
+                                        </a>
+                                        <a href="{% url 'export-report' report.id 'pdf' %}" 
+                                           class="btn btn-link" data-toggle="tooltip" title="Exportar PDF">
+                                            <i class="tim-icons icon-file-pdf"></i>
+                                        </a>
+                                        <form action="{% url 'delete-report' report.id %}" method="post" 
+                                              style="display: inline;" 
+                                              onsubmit="return confirm('¿Está seguro de eliminar este reporte?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-link" data-toggle="tooltip" title="Eliminar">
+                                                <i class="tim-icons icon-simple-remove"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear/editar reporte -->
+<div class="modal fade" id="reportModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="reportForm" method="post" action="{% url 'create-report' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Reporte</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nombre</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción</label>
+                        <textarea class="form-control" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Archivo</label>
+                        <select class="form-control" name="file" required>
+                            <option value="">Seleccione un archivo</option>
+                            {% for file in data_files %}
+                            <option value="{{ file.id }}">{{ file.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+function editReport(id) {
+    fetch(`/reports/${id}/`)
+        .then(response => response.json())
+        .then(data => {
+            const form = document.getElementById('reportForm');
+            form.action = `/report/${id}/update/`;
+            form.querySelector('[name=name]').value = data.name;
+            form.querySelector('[name=description]').value = data.description || '';
+            form.querySelector('[name=file]').value = data.file;
+            
+            document.querySelector('#reportModal .modal-title').textContent = 'Editar Reporte';
+            $('#reportModal').modal('show');
+        });
+}
+
+// Limpiar el formulario cuando se abre el modal para crear
+$('#reportModal').on('show.bs.modal', function(e) {
+    if (!e.relatedTarget) return; // Si se abre para editar, no limpiar
+    
+    const form = document.getElementById('reportForm');
+    form.reset();
+    form.action = "{% url 'create-report' %}";
+    document.querySelector('#reportModal .modal-title').textContent = 'Nuevo Reporte';
+});
+</script>
+
+<style>
+/* Estilos generales */
+.td-actions .btn-link {
+    padding: 7px;
+}
+
+.td-actions .btn-link i {
+    font-size: 1.1em;
+}
+
+/* Estilos para el modal */
+.modal-content {
+    background: #1e1e2f;
+    border: none;
+    border-radius: 10px;
+}
+
+.modal-header {
+    border-bottom: 1px solid #2b3553;
+    padding: 1.5rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #2b3553;
+    padding: 1rem 1.5rem;
+}
+
+/* Estilos para los inputs del modal */
+.form-label {
+    color: #9a9a9a;
+    margin-bottom: 0.5rem;
+}
+
+.modal-input,
+.modal-textarea,
+.modal-select {
+    background-color: #27293d !important;
+    border: 1px solid #2b3553 !important;
+    color: white !important;
+    border-radius: 6px;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+}
+
+.modal-input:focus,
+.modal-textarea:focus,
+.modal-select:focus {
+    background-color: #2b3553 !important;
+    border-color: #e14eca !important;
+    box-shadow: none !important;
+}
+
+.modal-input::placeholder,
+.modal-textarea::placeholder {
+    color: #6c757d;
+}
+
+.modal-select option {
+    background-color: #27293d;
+    color: white;
+}
+
+/* Estilos para los botones del modal */
+.modal .btn-primary {
+    background: #e14eca !important;
+    border-color: #e14eca !important;
+}
+
+.modal .btn-secondary {
+    background: #344675 !important;
+    border-color: #344675 !important;
+}
+
+.modal .btn-primary:hover {
+    background: #bd3eb3 !important;
+    border-color: #bd3eb3 !important;
+}
+
+.modal .btn-secondary:hover {
+    background: #263148 !important;
+    border-color: #263148 !important;
+}
+
+</style>
+{% endblock %}

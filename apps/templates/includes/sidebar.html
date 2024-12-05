@@ -1,0 +1,54 @@
+
+<div class="sidebar">
+    <!--
+      Tip 1: You can change the color of the sidebar using: data-color="blue | green | orange | red"
+    -->
+    <div class="sidebar-wrapper">
+        <div class="logo">
+            <a href="javascript:void(0)" class="simple-text logo-mini">
+                DVA
+            </a>
+            <a href="javascript:void(0)" class="simple-text logo-normal">
+                DataView Analytics
+            </a>
+        </div>
+        <ul class="nav">
+            <li class="{% if 'index' in segment %} active {% endif %}">
+                <a href="/">
+                    <i class="tim-icons icon-chart-pie-36"></i>
+                    <p>Dashboard</p>
+                </a>
+            </li>
+            <li class="{% if 'data-management' in segment %} active {% endif %}">
+                <a href="/data-management">
+                    <i class="tim-icons icon-cloud-upload-94"></i>
+                    <p>Gestión de Datos</p>
+                </a>
+            </li>
+            <li class="{% if 'data-selection' in segment %} active {% endif %}">
+                <a href="/data-selection">
+                    <i class="tim-icons icon-chart-bar-32"></i>
+                    <p>Visualización</p>
+                </a>
+            </li>
+            <li class="{% if 'data-history' in segment %} active {% endif %}">
+                <a href="/data-history">
+                    <i class="tim-icons icon-time-alarm"></i>
+                    <p>Historial</p>
+                </a>
+            </li>
+            <li class="{% if 'reports' in segment %} active {% endif %}">
+                <a href="/reports">
+                    <i class="tim-icons icon-paper"></i>
+                    <p>Reportes</p>
+                </a>
+            </li>
+            <li class="{% if 'settings' in segment %} active {% endif %}">
+                <a href="/user">
+                    <i class="tim-icons icon-settings"></i>
+                    <p>Configuración</p>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

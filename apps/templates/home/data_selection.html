@@ -1,0 +1,218 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Selección de Archivos {% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="card-category">Visualización de Datos</h5>
+                            <h2 class="card-title">Seleccionar Archivo para Análisis</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if data_files %}
+                        <div class="row">
+                            {% for file in data_files %}
+                            <div class="col-md-4 mb-4">
+                                <div class="file-card">
+                                    <form method="POST" class="h-100">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="file_id" value="{{ file.id }}">
+                                        <div class="file-card-content">
+                                            <div class="file-icon">
+                                                <i class="tim-icons icon-chart-pie-36"></i>
+                                            </div>
+                                            <div class="file-info">
+                                                <h4 class="file-name">{{ file.name }}</h4>
+                                                <p class="file-details">
+                                                    <span class="badge badge-info">
+                                                        <i class="tim-icons icon-calendar-60"></i>
+                                                        {{ file.uploaded_at|date:"d/m/Y H:i" }}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-block">
+                                                <i class="tim-icons icon-chart-bar-32 mr-2"></i>
+                                                Visualizar Datos
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="tim-icons icon-cloud-upload-94"></i>
+                                <h3>No hay archivos disponibles</h3>
+                                <p>Sube algunos archivos para comenzar con el análisis de datos.</p>
+                                <a href="{% url 'data-management' %}" class="btn btn-primary">
+                                    <i class="tim-icons icon-upload mr-2"></i>
+                                    Subir Archivos
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+.file-card {
+    background: #27293d;
+    border-radius: 12px;
+    border: 1px solid #2b3553;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.file-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 25px rgba(0,0,0,.25);
+    border-color: #e14eca;
+}
+
+.file-card-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.file-icon {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.file-icon i {
+    font-size: 3rem;
+    color: #e14eca;
+}
+
+.file-info {
+    flex-grow: 1;
+    margin-bottom: 1.5rem;
+}
+
+.file-name {
+    color: #ffffff;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Propiedades para el recorte de líneas con compatibilidad entre navegadores */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    box-orient: vertical;
+    display: box;
+    /* Respaldo para navegadores que no soportan line-clamp */
+    max-height: 3.6em; /* Altura aproximada para 2 líneas */
+    position: relative;
+}
+
+/* Para navegadores antiguos que no soportan line-clamp */
+@supports not (-webkit-line-clamp: 2) {
+    .file-name::after {
+        content: "...";
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        background: #27293d;
+        padding-left: 4px;
+    }
+}
+
+.file-details {
+    text-align: center;
+}
+
+.badge {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.badge i {
+    margin-right: 5px;
+}
+
+.empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #9a9a9a;
+}
+
+.empty-state i {
+    font-size: 5rem;
+    color: #e14eca;
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+.empty-state h3 {
+    color: #ffffff;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.btn i {
+    position: relative;
+    top: 1px;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.file-card {
+    animation: fadeIn 0.5s ease-out forwards;
+    animation-delay: calc(var(--animation-order) * 0.1s);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .col-md-4 {
+        margin-bottom: 1rem;
+    }
+
+    .file-card-content {
+        padding: 1rem;
+    }
+
+    .file-name {
+        font-size: 1.1rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Añadir delay de animación a cada tarjeta
+    const cards = document.querySelectorAll('.file-card');
+    cards.forEach((card, index) => {
+        card.style.setProperty('--animation-order', index);
+    });
+});
+</script>
+{% endblock %}
